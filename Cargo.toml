@@ -1,0 +1,22 @@
+[package]
+name = "proxybase-mcp"
+version = "0.1.0"
+edition = "2021"
+description = "MCP server for ProxyBase — AI agents can purchase and manage SOCKS5 proxies"
+license = "MIT"
+repository = "https://github.com/proxybasehq/proxybase-mcp"
+readme = "README.md"
+keywords = ["mcp", "proxy", "socks5", "ai-agent"]
+
+[dependencies]
+reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+env_logger = "0.11"
+log = "0.4"
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
