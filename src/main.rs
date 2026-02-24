@@ -97,6 +97,20 @@ fn get_tools() -> Value {
             }
         },
         {
+            "name": "list_currencies",
+            "description": "List all available payment currencies (cryptocurrencies) that can be used for the pay_currency field when creating an order or topping up. These are the coins enabled on the payment provider's merchant account. You MUST call this before creating an order to know which pay_currency values are valid.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "description": "Your ProxyBase API key (starts with pk_)"
+                    }
+                },
+                "required": ["api_key"]
+            }
+        },
+        {
             "name": "create_order",
             "description": "Create a new proxy order. This generates a cryptocurrency payment invoice. Once payment is confirmed via the blockchain, your SOCKS5 proxy credentials will be provisioned automatically. Poll check_order_status to monitor payment and get credentials.",
             "inputSchema": {
@@ -112,7 +126,7 @@ fn get_tools() -> Value {
                     },
                     "pay_currency": {
                         "type": "string",
-                        "description": "Cryptocurrency to pay with (e.g., 'btc', 'eth', 'usdttrc20'). Defaults to 'usdttrc20'."
+                        "description": "Cryptocurrency to pay with. Use list_currencies to get valid values. Defaults to 'usdttrc20'."
                     },
                     "callback_url": {
                         "type": "string",
@@ -160,7 +174,7 @@ fn get_tools() -> Value {
                     },
                     "pay_currency": {
                         "type": "string",
-                        "description": "Cryptocurrency to pay with. Defaults to 'usdttrc20'."
+                        "description": "Cryptocurrency to pay with. Use list_currencies to get valid values. Defaults to 'usdttrc20'."
                     }
                 },
                 "required": ["api_key", "order_id", "package_id"]
@@ -206,6 +220,24 @@ impl ProxyBaseClient {
     async fn list_packages(&self, api_key: &str) -> Result<Value, String> {
         let resp = self.http
             .get(format!("{}/packages", self.base_url))
+            .header("X-API-Key", api_key)
+            .send()
+            .await
+            .map_err(|e| format!("HTTP error: {}", e))?;
+
+        let status = resp.status();
+        let body: Value = resp.json().await.map_err(|e| format!("Parse error: {}", e))?;
+
+        if status.is_success() {
+            Ok(body)
+        } else {
+            Err(format!("API error ({}): {}", status, body))
+        }
+    }
+
+    async fn list_currencies(&self, api_key: &str) -> Result<Value, String> {
+        let resp = self.http
+            .get(format!("{}/currencies", self.base_url))
             .header("X-API-Key", api_key)
             .send()
             .await
@@ -385,10 +417,26 @@ async fn execute_tool(
             client.list_packages(&api_key).await
         }
 
+        "list_currencies" => {
+            let api_key = get_str_arg(args, "api_key")?;
+            client.list_currencies(&api_key).await
+        }
+
         "create_order" => {
             let api_key = get_str_arg(args, "api_key")?;
             let package_id = get_str_arg(args, "package_id")?;
             let pay_currency = args.get("pay_currency").and_then(|v| v.as_str());
+
+            if let Some(currency) = pay_currency {
+                let currencies_val = client.list_currencies(&api_key).await?;
+                if let Some(currencies_arr) = currencies_val.get("currencies").and_then(|v| v.as_array()) {
+                    let valid_currencies: Vec<&str> = currencies_arr.iter().filter_map(|v| v.as_str()).collect();
+                    if !valid_currencies.contains(&currency.to_lowercase().as_str()) {
+                        return Err(format!("Invalid pay_currency: '{}'. Supported currencies: {}", currency, valid_currencies.join(", ")));
+                    }
+                }
+            }
+
             let callback_url = args.get("callback_url").and_then(|v| v.as_str());
             client.create_order(&api_key, &package_id, pay_currency, callback_url).await
         }
@@ -404,6 +452,17 @@ async fn execute_tool(
             let order_id = get_str_arg(args, "order_id")?;
             let package_id = get_str_arg(args, "package_id")?;
             let pay_currency = args.get("pay_currency").and_then(|v| v.as_str());
+
+            if let Some(currency) = pay_currency {
+                let currencies_val = client.list_currencies(&api_key).await?;
+                if let Some(currencies_arr) = currencies_val.get("currencies").and_then(|v| v.as_array()) {
+                    let valid_currencies: Vec<&str> = currencies_arr.iter().filter_map(|v| v.as_str()).collect();
+                    if !valid_currencies.contains(&currency.to_lowercase().as_str()) {
+                        return Err(format!("Invalid pay_currency: '{}'. Supported currencies: {}", currency, valid_currencies.join(", ")));
+                    }
+                }
+            }
+
             client.topup_order(&api_key, &order_id, &package_id, pay_currency).await
         }
 
@@ -500,7 +559,7 @@ mod tests {
     fn test_get_tools_valid_json() {
         let tools = get_tools();
         let arr = tools.as_array().unwrap();
-        assert_eq!(arr.len(), 5);
+        assert_eq!(arr.len(), 6);
 
         let names: Vec<&str> = arr
             .iter()
@@ -509,6 +568,7 @@ mod tests {
 
         assert!(names.contains(&"register_agent"));
         assert!(names.contains(&"list_packages"));
+        assert!(names.contains(&"list_currencies"));
         assert!(names.contains(&"create_order"));
         assert!(names.contains(&"check_order_status"));
         assert!(names.contains(&"topup_order"));
@@ -578,7 +638,7 @@ mod tests {
         let resp = handle_request(&client, &req).await;
         let result = resp.result.unwrap();
         let tools = result["tools"].as_array().unwrap();
-        assert_eq!(tools.len(), 5);
+        assert_eq!(tools.len(), 6);
     }
 
     #[tokio::test]

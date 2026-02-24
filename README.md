@@ -89,6 +89,22 @@ List available proxy bandwidth packages with pricing.
 
 ---
 
+### `list_currencies`
+List available payment currencies (cryptocurrencies) for the `pay_currency` field.
+
+| Param | Required | Description |
+|---|---|---|
+| `api_key` | ✅ | Your API key (starts with `pk_`) |
+
+**Returns:**
+```json
+{
+  "currencies": ["btc", "eth", "sol", "usdttrc20", "ltc", ...]
+}
+```
+
+---
+
 ### `create_order`
 Purchase a proxy package. Generates a cryptocurrency payment invoice.
 
@@ -96,7 +112,7 @@ Purchase a proxy package. Generates a cryptocurrency payment invoice.
 |---|---|---|
 | `api_key` | ✅ | Your API key |
 | `package_id` | ✅ | Package to purchase (e.g., `us_residential_1gb`) |
-| `pay_currency` | | Crypto to pay with (default: `usdttrc20`). Options: `btc`, `eth`, `ltc`, `usdttrc20` |
+| `pay_currency` | | Crypto to pay with (default: `usdttrc20`). Use `list_currencies` for valid values |
 | `callback_url` | | Webhook URL for status notifications |
 
 **Returns:**
@@ -152,7 +168,7 @@ Add bandwidth to an existing proxy. Same credentials, more bandwidth.
 | `api_key` | ✅ | Your API key |
 | `order_id` | ✅ | Order to top up |
 | `package_id` | ✅ | Bandwidth package to add |
-| `pay_currency` | | Crypto to pay with |
+| `pay_currency` | | Crypto to pay with. Use `list_currencies` for valid values |
 
 ---
 
@@ -161,12 +177,13 @@ Add bandwidth to an existing proxy. Same credentials, more bandwidth.
 ```
 1. register_agent      → Save your api_key
 2. list_packages       → Choose a package
-3. create_order        → Get payment address
-4. [Pay via blockchain]
-5. check_order_status  → Poll until status = "proxy_active"
-6. Use proxy: socks5://username:password@api.proxybase.xyz:1080
-7. check_order_status  → Monitor bandwidth usage
-8. topup_order         → When bandwidth runs low
+3. list_currencies     → See valid pay_currency values
+4. create_order        → Get payment address
+5. [Pay via blockchain]
+6. check_order_status  → Poll until status = "proxy_active"
+7. Use proxy: socks5://username:password@api.proxybase.xyz:1080
+8. check_order_status  → Monitor bandwidth usage
+9. topup_order         → When bandwidth runs low
 ```
 
 ## Protocol Details
