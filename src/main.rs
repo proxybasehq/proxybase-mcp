@@ -179,6 +179,24 @@ fn get_tools() -> Value {
                 },
                 "required": ["api_key", "order_id", "package_id"]
             }
+        },
+        {
+            "name": "rotate_proxy",
+            "description": "Rotate the proxy to get a fresh IP address. This calls the upstream partner's reset endpoint to invalidate the current session and assign a new IP. Only works on orders with proxy_active status. After rotation, your next SOCKS5 connection will use a new IP.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "description": "Your ProxyBase API key (starts with pk_)"
+                    },
+                    "order_id": {
+                        "type": "string",
+                        "description": "The order ID whose proxy should be rotated"
+                    }
+                },
+                "required": ["api_key", "order_id"]
+            }
         }
     ])
 }
@@ -202,7 +220,7 @@ impl ProxyBaseClient {
 
     async fn register_agent(&self) -> Result<Value, String> {
         let resp = self.http
-            .post(format!("{}/agents", self.base_url))
+            .post(format!("{}/v1/agents", self.base_url))
             .send()
             .await
             .map_err(|e| format!("HTTP error: {}", e))?;
@@ -219,7 +237,7 @@ impl ProxyBaseClient {
 
     async fn list_packages(&self, api_key: &str) -> Result<Value, String> {
         let resp = self.http
-            .get(format!("{}/packages", self.base_url))
+            .get(format!("{}/v1/packages", self.base_url))
             .header("X-API-Key", api_key)
             .send()
             .await
@@ -237,7 +255,7 @@ impl ProxyBaseClient {
 
     async fn list_currencies(&self, api_key: &str) -> Result<Value, String> {
         let resp = self.http
-            .get(format!("{}/currencies", self.base_url))
+            .get(format!("{}/v1/currencies", self.base_url))
             .header("X-API-Key", api_key)
             .send()
             .await
@@ -270,7 +288,7 @@ impl ProxyBaseClient {
         }
 
         let resp = self.http
-            .post(format!("{}/orders", self.base_url))
+            .post(format!("{}/v1/orders", self.base_url))
             .header("X-API-Key", api_key)
             .header("Content-Type", "application/json")
             .json(&payload)
@@ -290,7 +308,7 @@ impl ProxyBaseClient {
 
     async fn check_order_status(&self, api_key: &str, order_id: &str) -> Result<Value, String> {
         let resp = self.http
-            .get(format!("{}/orders/{}/status", self.base_url, order_id))
+            .get(format!("{}/v1/orders/{}/status", self.base_url, order_id))
             .header("X-API-Key", api_key)
             .send()
             .await
@@ -320,10 +338,28 @@ impl ProxyBaseClient {
         }
 
         let resp = self.http
-            .post(format!("{}/orders/{}/topup", self.base_url, order_id))
+            .post(format!("{}/v1/orders/{}/topup", self.base_url, order_id))
             .header("X-API-Key", api_key)
             .header("Content-Type", "application/json")
             .json(&payload)
+            .send()
+            .await
+            .map_err(|e| format!("HTTP error: {}", e))?;
+
+        let status = resp.status();
+        let body: Value = resp.json().await.map_err(|e| format!("Parse error: {}", e))?;
+
+        if status.is_success() {
+            Ok(body)
+        } else {
+            Err(format!("API error ({}): {}", status, body))
+        }
+    }
+
+    async fn rotate_proxy(&self, api_key: &str, order_id: &str) -> Result<Value, String> {
+        let resp = self.http
+            .post(format!("{}/v1/orders/{}/rotate", self.base_url, order_id))
+            .header("X-API-Key", api_key)
             .send()
             .await
             .map_err(|e| format!("HTTP error: {}", e))?;
@@ -466,6 +502,12 @@ async fn execute_tool(
             client.topup_order(&api_key, &order_id, &package_id, pay_currency).await
         }
 
+        "rotate_proxy" => {
+            let api_key = get_str_arg(args, "api_key")?;
+            let order_id = get_str_arg(args, "order_id")?;
+            client.rotate_proxy(&api_key, &order_id).await
+        }
+
         _ => Err(format!("Unknown tool: {}", tool_name)),
     }
 }
@@ -559,7 +601,7 @@ mod tests {
     fn test_get_tools_valid_json() {
         let tools = get_tools();
         let arr = tools.as_array().unwrap();
-        assert_eq!(arr.len(), 6);
+        assert_eq!(arr.len(), 7);
 
         let names: Vec<&str> = arr
             .iter()
@@ -572,6 +614,7 @@ mod tests {
         assert!(names.contains(&"create_order"));
         assert!(names.contains(&"check_order_status"));
         assert!(names.contains(&"topup_order"));
+        assert!(names.contains(&"rotate_proxy"));
     }
 
     #[test]
@@ -638,7 +681,7 @@ mod tests {
         let resp = handle_request(&client, &req).await;
         let result = resp.result.unwrap();
         let tools = result["tools"].as_array().unwrap();
-        assert_eq!(tools.len(), 6);
+        assert_eq!(tools.len(), 7);
     }
 
     #[tokio::test]

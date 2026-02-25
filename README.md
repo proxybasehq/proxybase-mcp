@@ -172,6 +172,25 @@ Add bandwidth to an existing proxy. Same credentials, more bandwidth.
 
 ---
 
+### `rotate_proxy`
+Rotate the proxy to get a fresh IP address. Calls the upstream partner's reset endpoint. Only works on active proxies.
+
+| Param | Required | Description |
+|---|---|---|
+| `api_key` | ✅ | Your API key |
+| `order_id` | ✅ | The order whose proxy should be rotated |
+
+**Returns:**
+```json
+{
+  "order_id": "kQx7p3Wn",
+  "message": "Proxy rotated successfully. You will receive a fresh IP on your next connection.",
+  "rotated": true
+}
+```
+
+---
+
 ## Typical Agent Workflow
 
 ```
@@ -183,7 +202,8 @@ Add bandwidth to an existing proxy. Same credentials, more bandwidth.
 6. check_order_status  → Poll until status = "proxy_active"
 7. Use proxy: socks5://username:password@api.proxybase.xyz:1080
 8. check_order_status  → Monitor bandwidth usage
-9. topup_order         → When bandwidth runs low
+9. rotate_proxy        → Get a fresh IP when needed
+10. topup_order        → When bandwidth runs low
 ```
 
 ## Protocol Details
