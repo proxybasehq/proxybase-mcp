@@ -126,7 +126,7 @@ fn get_tools() -> Value {
                     },
                     "pay_currency": {
                         "type": "string",
-                        "description": "Cryptocurrency to pay with. Use list_currencies to get valid values. Defaults to 'usdttrc20'."
+                        "description": "Cryptocurrency to pay with. Use list_currencies to get valid values. Defaults to 'usdcsol'."
                     },
                     "callback_url": {
                         "type": "string",
@@ -174,7 +174,7 @@ fn get_tools() -> Value {
                     },
                     "pay_currency": {
                         "type": "string",
-                        "description": "Cryptocurrency to pay with. Use list_currencies to get valid values. Defaults to 'usdttrc20'."
+                        "description": "Cryptocurrency to pay with. Use list_currencies to get valid values. Defaults to 'usdcsol'."
                     }
                 },
                 "required": ["api_key", "order_id", "package_id"]

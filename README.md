@@ -99,7 +99,7 @@ List available payment currencies (cryptocurrencies) for the `pay_currency` fiel
 **Returns:**
 ```json
 {
-  "currencies": ["btc", "eth", "sol", "usdttrc20", "ltc", ...]
+  "currencies": ["btc", "eth", "sol", "usdcsol", "ltc", ...]
 }
 ```
 
@@ -112,7 +112,7 @@ Purchase a proxy package. Generates a cryptocurrency payment invoice.
 |---|---|---|
 | `api_key` | ✅ | Your API key |
 | `package_id` | ✅ | Package to purchase (e.g., `us_residential_1gb`) |
-| `pay_currency` | | Crypto to pay with (default: `usdttrc20`). Use `list_currencies` for valid values |
+| `pay_currency` | | Crypto to pay with (default: `usdcsol`). Use `list_currencies` for valid values |
 | `callback_url` | | Webhook URL for status notifications |
 
 **Returns:**
@@ -121,7 +121,7 @@ Purchase a proxy package. Generates a cryptocurrency payment invoice.
   "order_id": "kQx7p3Wn",
   "payment_id": "5832461907",
   "pay_address": "TXyz...",
-  "pay_currency": "usdttrc20",
+  "pay_currency": "usdcsol",
   "pay_amount": 10.15,
   "price_usd": 10.00,
   "status": "payment_pending"
